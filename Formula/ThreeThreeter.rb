@@ -26,7 +26,7 @@ class Threethreeter < Formula
 
     # Install dependencies directly into libexec using the Homebrew Python's pip
     python_bin = Formula["python@3.11"].opt_bin
-    system python_bin/"pip3", "install", "--upgrade", "pip"
+    # system python_bin/"pip3", "install", "--upgrade", "pip" # Skip pip upgrade
     # Install dependencies into the libexec prefix structure
     system python_bin/"pip3", "install", "-r", requirements_path, "--prefix=#{libexec}"
 
