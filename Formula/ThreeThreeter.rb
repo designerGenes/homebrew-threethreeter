@@ -4,7 +4,7 @@ class Threethreeter < Formula
   desc "Local backend for the 33ter OCR code solution app"
   homepage "https://github.com/designerGenes/33ter_backend"
   url "https://github.com/designerGenes/33ter_backend/archive/refs/tags/v0.1.1.tar.gz"
-  sha256 "70cf1a9021200fd107416dbcfb8dfabb473f2913b263beea51a4b6ab57d08e0d"
+  sha256 "0a5bf3de368f3791c5c7de072a613ec5aafb9ecf9f767875640423124e6dafcb"
   license "MIT"
   version "0.1.1"
 
@@ -13,18 +13,15 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # Homebrew unpacks the tarball into a temporary directory.
-    # Let's see what's in the current directory (.) when install runs.
-    ohai "Listing current directory contents during install:"
-    system "ls", "-la", "."
+    # The 'ls' output showed that Homebrew unpacks the *contents* of the
+    # LocalBackend directory directly into the CWD during install.
 
-    # Define the path to requirements.txt relative to the unpacked structure
-    # Assuming the CWD contains the 'LocalBackend' directory from the tarball.
-    requirements_path = Pathname.pwd/"LocalBackend/req/requirements.txt"
+    # Define the path to requirements.txt relative to the CWD
+    requirements_path = Pathname.pwd/"req/requirements.txt" # Adjusted path based on your requirements.txt location
 
     # Check if requirements file exists before trying to install
     unless requirements_path.exist?
-      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and directory listing above."
+      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and directory listing."
     end
 
     # Install dependencies directly into libexec using the Homebrew Python's pip
@@ -37,16 +34,16 @@ class Threethreeter < Formula
     site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
     libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "")
 
-    # Copy the *contents* of the current directory (including LocalBackend) into libexec
-    # This should result in libexec/LocalBackend/...
+    # Copy the *contents* of the current directory into libexec
+    # This makes libexec the root for the application files.
     libexec.install Dir["*"]
 
     # Create a wrapper script in bin, adjusting paths
     (bin/"33ter-backend").write <<~EOS
       #!/bin/bash
-      # Add the LocalBackend source dir and libexec site-packages to PYTHONPATH
-      export PYTHONPATH="#{libexec}/LocalBackend:#{libexec_site_packages}:$PYTHONPATH"
-      exec "#{python_bin}/python3" "#{libexec}/LocalBackend/start_local_dev.py" "$@"
+      # Add libexec (for source) and libexec site-packages (for deps) to PYTHONPATH
+      export PYTHONPATH="#{libexec}:#{libexec_site_packages}:$PYTHONPATH"
+      exec "#{python_bin}/python3" "#{libexec}/start_local_dev.py" "$@"
     EOS
   end
 
