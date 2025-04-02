@@ -13,15 +13,18 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # Homebrew unpacks the tarball. The tarball contains the 'LocalBackend' directory.
-    # So, the structure inside libexec should be libexec/LocalBackend/...
+    # Homebrew unpacks the tarball into a temporary directory.
+    # Let's see what's in the current directory (.) when install runs.
+    ohai "Listing current directory contents during install:"
+    system "ls", "-la", "."
 
     # Define the path to requirements.txt relative to the unpacked structure
-    requirements_path = libexec/"LocalBackend/req/requirements.txt"
+    # Assuming the CWD contains the 'LocalBackend' directory from the tarball.
+    requirements_path = Pathname.pwd/"LocalBackend/req/requirements.txt"
 
     # Check if requirements file exists before trying to install
     unless requirements_path.exist?
-      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure."
+      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and directory listing above."
     end
 
     # Install dependencies directly into libexec using the Homebrew Python's pip
@@ -33,6 +36,10 @@ class Threethreeter < Formula
     # Construct the site-packages path within libexec
     site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
     libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "")
+
+    # Copy the *contents* of the current directory (including LocalBackend) into libexec
+    # This should result in libexec/LocalBackend/...
+    libexec.install Dir["*"]
 
     # Create a wrapper script in bin, adjusting paths
     (bin/"33ter-backend").write <<~EOS
