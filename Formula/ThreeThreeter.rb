@@ -13,14 +13,11 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # Homebrew unpacks the tarball into a directory like '33ter_backend-0.1.0'
-    # within the formula's cellar path (libexec).
+    # Homebrew unpacks the tarball. The tarball contains the 'LocalBackend' directory.
+    # So, the structure inside libexec should be libexec/LocalBackend/...
 
-    # Define the root directory *within* libexec based on the unpacked tarball structure
-    app_root = libexec/"33ter_backend-#{version}"
-
-    # Define the path to requirements.txt relative to the app_root
-    requirements_path = app_root/"req/requirements.txt"
+    # Define the path to requirements.txt relative to the unpacked structure
+    requirements_path = libexec/"LocalBackend/req/requirements.txt"
 
     # Check if requirements file exists before trying to install
     unless requirements_path.exist?
@@ -40,9 +37,9 @@ class Threethreeter < Formula
     # Create a wrapper script in bin, adjusting paths
     (bin/"33ter-backend").write <<~EOS
       #!/bin/bash
-      # Add app_root (for source) and libexec site-packages (for deps) to PYTHONPATH
-      export PYTHONPATH="#{app_root}:#{libexec_site_packages}:$PYTHONPATH"
-      exec "#{python_bin}/python3" "#{app_root}/start_local_dev.py" "$@"
+      # Add the LocalBackend source dir and libexec site-packages to PYTHONPATH
+      export PYTHONPATH="#{libexec}/LocalBackend:#{libexec_site_packages}:$PYTHONPATH"
+      exec "#{python_bin}/python3" "#{libexec}/LocalBackend/start_local_dev.py" "$@"
     EOS
   end
 
