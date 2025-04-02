@@ -2,35 +2,40 @@
 #                https://rubydoc.brew.sh/Formula
 class Threethreeter < Formula
   desc "Local backend for the 33ter OCR code solution app"
-  homepage "https://github.com/designerGenes/33ter_backend" # TODO: Update with actual URL
-  # TODO: Update url to point to a release tarball
+  homepage "https://github.com/designerGenes/33ter_backend"
   url "https://github.com/designerGenes/33ter_backend/archive/refs/tags/v0.1.0.tar.gz"
-  # Replace this with the correct SHA256 checksum obtained from 'brew fetch' or 'shasum'
   sha256 "cedbb415fcfacafe7982f56795961e8839ebe090b4842242c80334a1331df154"
-  license "MIT" # Or your chosen license
-  version "0.1.0" # TODO: Keep this updated with your releases
+  license "MIT"
+  version "0.1.0"
 
-  depends_on "python@3.11" 
+  depends_on "python@3.11"
   depends_on "tesseract"
   depends_on "tesseract-lang"
 
   def install
+    # Copy the entire application source code into libexec *first*
+    # This assumes the tarball unpacks with a top-level 'LocalBackend' directory
+    libexec.install Dir["*"]
+
     # Create a virtual environment
     venv_dir = libexec/"venv"
     system Formula["python@3.11"].opt_bin/"python3", "-m", "venv", venv_dir
     venv_bin = venv_dir/"bin"
-    ENV.prepend_path "PATH", venv_bin
+    ENV.prepend_path "PATH", venv_bin # Ensure pip uses the venv python
+
+    # Define the path to requirements.txt *within* the installed libexec structure
+    requirements_path = libexec/"LocalBackend/req/requirements.txt"
+
+    # Check if requirements file exists before trying to install
+    unless requirements_path.exist?
+      odie "Requirements file not found at expected path: #{requirements_path}"
+    end
 
     # Install dependencies from requirements.txt into the venv
-    # First, stage the requirements file so pip can find it
-    resource("requirements").stage Pathname.pwd/"req"
     system venv_bin/"pip", "install", "--upgrade", "pip"
-    system venv_bin/"pip", "install", "-r", libexec/"LocalBackend/req/requirements.txt"
+    system venv_bin/"pip", "install", "-r", requirements_path
 
-    # Copy the entire application source code into libexec
-    libexec.install Dir["*"]
-
-    # Create a wrapper script in bin
+    # Create a wrapper script in bin, adjusting paths
     (bin/"33ter-backend").write <<~EOS
       #!/bin/bash
       export PYTHONPATH="#{libexec}/LocalBackend:$PYTHONPATH"
