@@ -13,17 +13,18 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # Assume Homebrew unpacks the *contents* of the tarball's top directory
-    # (e.g., 33ter_backend-0.1.0/*) directly into libexec.
-    # No need for cp_r or defining app_root separately. libexec *is* the app root.
+    # Homebrew unpacks the tarball into a directory like '33ter_backend-0.1.0'
+    # within the formula's cellar path (libexec).
 
-    # Define the path to requirements.txt relative to libexec
-    requirements_path = libexec/"req/requirements.txt"
+    # Define the root directory *within* libexec based on the unpacked tarball structure
+    app_root = libexec/"33ter_backend-#{version}"
+
+    # Define the path to requirements.txt relative to the app_root
+    requirements_path = app_root/"req/requirements.txt"
 
     # Check if requirements file exists before trying to install
     unless requirements_path.exist?
-      # If this fails, the assumption about unpacking is wrong.
-      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and Homebrew unpacking behavior."
+      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure."
     end
 
     # Install dependencies directly into libexec using the Homebrew Python's pip
@@ -34,14 +35,14 @@ class Threethreeter < Formula
 
     # Construct the site-packages path within libexec
     site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
-    libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "") # Ensure prefix is string for sub
+    libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "")
 
     # Create a wrapper script in bin, adjusting paths
     (bin/"33ter-backend").write <<~EOS
       #!/bin/bash
-      # Add libexec (for source) and libexec site-packages (for deps) to PYTHONPATH
-      export PYTHONPATH="#{libexec}:#{libexec_site_packages}:$PYTHONPATH"
-      exec "#{python_bin}/python3" "#{libexec}/start_local_dev.py" "$@"
+      # Add app_root (for source) and libexec site-packages (for deps) to PYTHONPATH
+      export PYTHONPATH="#{app_root}:#{libexec_site_packages}:$PYTHONPATH"
+      exec "#{python_bin}/python3" "#{app_root}/start_local_dev.py" "$@"
     EOS
   end
 
