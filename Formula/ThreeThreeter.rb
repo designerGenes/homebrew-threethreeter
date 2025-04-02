@@ -1,5 +1,3 @@
-# Documentation: https://docs.brew.sh/Formula-Cookbook
-#                https://rubydoc.brew.sh/Formula
 class Threethreeter < Formula
   desc "Local backend for the 33ter OCR code solution app"
   homepage "https://github.com/designerGenes/33ter_backend"
@@ -13,33 +11,30 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # Define the path to requirements.txt relative to the CWD (build dir)
-    requirements_path = Pathname.pwd/"req/requirements.txt" # Path relative to CWD
+    # Change directory into the extracted folder (usually a single subdirectory)
+    cd Dir["*"].first do
+      requirements_path = Pathname.pwd/"req/requirements.txt"
+      unless requirements_path.exist?
+        odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and directory listing."
+      end
 
-    # Check if requirements file exists before trying to install
-    unless requirements_path.exist?
-      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and directory listing."
+      # Install Python dependencies into libexec using Homebrew's Python pip
+      python_bin = Formula["python@3.11"].opt_bin
+      system python_bin/"pip3", "install", "--verbose", "-r", requirements_path, "--prefix=#{libexec}"
+
+      # Copy the source files from the subdirectory into libexec
+      libexec.install Dir["*"]
     end
 
-    # Install dependencies directly into libexec using the Homebrew Python's pip
-    python_bin = Formula["python@3.11"].opt_bin
-    # system python_bin/"pip3", "install", "--upgrade", "pip" # Skip pip upgrade
-
-    # Install dependencies into the libexec prefix structure *first*
-    system python_bin/"pip3", "install", "--verbose", "-r", requirements_path, "--prefix=#{libexec}"
-
-    # Construct the site-packages path within libexec *after* installation
+    # Determine the site-packages path for dependencies installed in libexec
     site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
-    libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "")
+    libexec_site_packages = (libexec/site_packages).to_s.sub(Formula["python@3.11"].opt_prefix.to_s, "")
 
-    # Now, copy the *contents* of the current directory (source code) into libexec
-    # This makes libexec the root for the application files.
-    libexec.install Dir["*"]
-
-    # Create a wrapper script in bin, adjusting paths
+    # Create a wrapper script in bin that sets PYTHONPATH and runs the main script
+    python_bin = Formula["python@3.11"].opt_bin
     (bin/"33ter-backend").write <<~EOS
       #!/bin/bash
-      # Add libexec (for source) and libexec site-packages (for deps) to PYTHONPATH
+      # Add libexec (for source) and its site-packages (for dependencies) to PYTHONPATH
       export PYTHONPATH="#{libexec}:#{libexec_site_packages}:$PYTHONPATH"
       exec "#{python_bin}/python3" "#{libexec}/start_local_dev.py" "$@"
     EOS
@@ -58,7 +53,7 @@ class Threethreeter < Formula
   test do
     assert_predicate bin/"33ter-backend", :exist?
     assert_predicate bin/"33ter-backend", :executable?
-    # Test might involve checking if the script runs with a hypothetical --help flag
+    # Optionally, test the script with a flag like --help:
     # system bin/"33ter-backend", "--help"
   end
 end
