@@ -3,7 +3,7 @@
 class Threethreeter < Formula
   desc "Local backend for the 33ter OCR code solution app"
   homepage "https://github.com/designerGenes/33ter_backend"
-  url "https://github.com/designerGenes/33ter_backend/archive/refs/tags/v0.1.1.tar.gz"
+  url "https://github.com/designerGenes/33ter_backend/releases/download/v0.1.1/33ter_backend-0.1.1.tar.gz"
   sha256 "0a5bf3de368f3791c5c7de072a613ec5aafb9ecf9f767875640423124e6dafcb"
   license "MIT"
   version "0.1.1"
