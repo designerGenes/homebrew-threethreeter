@@ -13,10 +13,7 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # The 'ls' output showed that Homebrew unpacks the *contents* of the
-    # LocalBackend directory directly into the CWD during install.
-
-    # Define the path to requirements.txt relative to the CWD
+    # Define the path to requirements.txt relative to the CWD (build dir)
     requirements_path = Pathname.pwd/"req/requirements.txt" # Path relative to CWD
 
     # Check if requirements file exists before trying to install
@@ -27,15 +24,15 @@ class Threethreeter < Formula
     # Install dependencies directly into libexec using the Homebrew Python's pip
     python_bin = Formula["python@3.11"].opt_bin
     # system python_bin/"pip3", "install", "--upgrade", "pip" # Skip pip upgrade
-    # Install dependencies into the libexec prefix structure
-    # Add --verbose for more detailed output
+
+    # Install dependencies into the libexec prefix structure *first*
     system python_bin/"pip3", "install", "--verbose", "-r", requirements_path, "--prefix=#{libexec}"
 
-    # Construct the site-packages path within libexec
+    # Construct the site-packages path within libexec *after* installation
     site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
     libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "")
 
-    # Copy the *contents* of the current directory into libexec
+    # Now, copy the *contents* of the current directory (source code) into libexec
     # This makes libexec the root for the application files.
     libexec.install Dir["*"]
 
