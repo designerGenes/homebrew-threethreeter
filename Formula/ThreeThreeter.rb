@@ -13,37 +13,35 @@ class Threethreeter < Formula
   depends_on "tesseract-lang"
 
   def install
-    # Define the root directory *within* libexec based on the unpacked tarball structure
-    app_root = libexec/"33ter_backend-#{version}"
+    # Assume Homebrew unpacks the *contents* of the tarball's top directory
+    # (e.g., 33ter_backend-0.1.0/*) directly into libexec.
+    # No need for cp_r or defining app_root separately. libexec *is* the app root.
 
-    # Copy the application source code into the app_root directory within libexec
-    # Use cp_r to copy contents correctly
-    cp_r ".", app_root
-
-    # Define the path to requirements.txt relative to the app_root
-    requirements_path = app_root/"req/requirements.txt"
+    # Define the path to requirements.txt relative to libexec
+    requirements_path = libexec/"req/requirements.txt"
 
     # Check if requirements file exists before trying to install
     unless requirements_path.exist?
-      odie "Requirements file not found at expected path: #{requirements_path}"
+      # If this fails, the assumption about unpacking is wrong.
+      odie "Requirements file not found at expected path: #{requirements_path}. Check tarball structure and Homebrew unpacking behavior."
     end
 
     # Install dependencies directly into libexec using the Homebrew Python's pip
-    # This will install packages into libexec/lib/python3.11/site-packages
     python_bin = Formula["python@3.11"].opt_bin
     system python_bin/"pip3", "install", "--upgrade", "pip"
+    # Install dependencies into the libexec prefix structure
     system python_bin/"pip3", "install", "-r", requirements_path, "--prefix=#{libexec}"
 
-    # Create a wrapper script in bin, adjusting paths
-    # Ensure PYTHONPATH includes both the app source and the libexec site-packages
-    site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
     # Construct the site-packages path within libexec
-    libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix, "")
+    site_packages = Language::Python.site_packages(Formula["python@3.11"].opt_bin/"python3")
+    libexec_site_packages = libexec/site_packages.sub(Formula["python@3.11"].opt_prefix.to_s, "") # Ensure prefix is string for sub
 
+    # Create a wrapper script in bin, adjusting paths
     (bin/"33ter-backend").write <<~EOS
       #!/bin/bash
-      export PYTHONPATH="#{app_root}:#{libexec_site_packages}:$PYTHONPATH"
-      exec "#{python_bin}/python3" "#{app_root}/start_local_dev.py" "$@"
+      # Add libexec (for source) and libexec site-packages (for deps) to PYTHONPATH
+      export PYTHONPATH="#{libexec}:#{libexec_site_packages}:$PYTHONPATH"
+      exec "#{python_bin}/python3" "#{libexec}/start_local_dev.py" "$@"
     EOS
   end
 
